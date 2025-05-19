@@ -1,44 +1,47 @@
-# Project Overview and Code Workflow
+# Question Answering System Comparison
 
-## Project Overview
-This project aims to conduct a comprehensive comparison of different Question Answering (QA) model paradigms—extractive, generative, and retrieval-augmented—on the Stanford Question Answering Dataset (SQuAD). The experiments leverage two major language model APIs (OpenAI and Google’s Gemini) to evaluate both "stuff" and "map-reduce" prompting pipelines. Key objectives include:
+## Overview
 
-- **Accuracy**: Measure exact match (EM) and F1 score across model–pipeline combinations.
-- **Efficiency**: Track API latency and token usage to quantify cost vs. performance trade-offs.
-- **Scalability**: Demonstrate how chunking strategies (map-reduce) affect results on long contexts.
+This project compares three QA approaches on the SQuAD dataset:
 
-## Working of the Code
-The repository is organized into four Jupyter notebooks—two for each API (OpenAI and Gemini)—and follows a consistent structure:
+- **Extractive QA**: Uses a BERT model fine-tuned on SQuAD to select answer spans.  
+- **Generative QA**: Uses Gemini 2.0 and GPT-4.0 to generate free-form answers.  
+- **Retrieval-Augmented Generation (RAG)**: Retrieves top-5 passages via FAISS (with `all-MiniLM-L6-v2` embeddings) and generates answers with a generative model.
 
-1. **Data Loading & Preprocessing**
-   - Load the SQuAD dataset.
-   - Preprocess contexts and questions.
-   - For the map-reduce pipeline: split long contexts into fixed-size chunks with overlap.
+Each approach is evaluated on Exact Match, F1, ROUGE-L, Recall@5, MRR@5, and throughput (QPS).
 
-2. **Prompt Construction**
-   - **Stuff Pipeline**: Concatenate the full context with the question into a single prompt template.
-   - **Map-Reduce Pipeline**:
-     - **Map Step**: Send each chunk individually with the question prompt to the model.
-     - **Reduce Step**: Aggregate chunk-level responses by ranking or simple concatenation, then finalize an answer prompt to refine the aggregated response.
+## Methodology
 
-3. **API Calls & Integration**
-   - Notebooks:
-     - `openai_stuff.ipynb` / `openai_map_reduce.ipynb`
-     - `gemini_stuff.ipynb` / `gemini_map_reduce.ipynb`
-   - Common functionality encapsulated in utility functions:
-     - `generate_answer_stuff(model, context, question)`
-     - `generate_answer_map_reduce(model, chunks, question)`
-   - Models are parameterized (e.g., model name, temperature, max tokens). Responses and metadata (latency, tokens) are logged.
+**A. Dataset**  
+- **SQuAD**: >100 000 question–answer pairs from Wikipedia.  
+- **Splits**:  
+  - In-domain (val10): 10 questions from the validation set.  
+  - Out-of-domain (train10): 10 questions from the training set.
 
-4. **Evaluation & Metrics**
-   - Calculate Exact Match (EM) and F1 score by comparing model outputs to ground-truth answers.
-   - Record API call latency and token consumption (prompt + completion tokens).
-   - Results stored in structured CSV files for downstream analysis.
+**B. Extractive QA**  
+- **Model**: `huggingface-course/bert-finetuned-squad`  
+- **Approach**: Predicts start/end token indices for answer spans given question+context.
 
-5. **Analysis & Visualization**
-   - Load results CSVs and generate comparative plots:
-     - Accuracy vs. Pipeline for each model API.
-     - Latency vs. Pipeline.
-     - Token usage vs. Accuracy trade-off.
-   - Visualizations created using Matplotlib for clear interpretation.
+**C. Generative QA**  
+- **Models**: Gemini 2.0, GPT-4.0  
+- **Approach**: Generates answers from the question prompt without retrieval.
 
+**D. Retrieval-Augmented Generation (RAG)**  
+1. **Retrieval**  
+   - **Engine**: FAISS with `all-MiniLM-L6-v2` embeddings via LangChain.  
+   - Retrieves top 5 relevant passages per query.  
+2. **Generation**  
+   - Uses Gemini 2.0 or GPT-4.0 to generate answers conditioned on retrieved passages.
+
+**E. Embedding Techniques**  
+- **Library**: LangChain + HuggingFaceEmbeddings  
+- **Model**: `sentence-transformers/all-MiniLM-L6-v2`  
+- **Storage**: Dense vectors indexed in FAISS for nearest-neighbor search.
+
+**F. Evaluation Metrics**  
+- **Exact Match (EM)**: Word-for-word match rate.  
+- **F1 Score**: Token-level harmonic mean of precision and recall.  
+- **ROUGE-L**: Longest common subsequence measure.  
+- **Recall@5**: Fraction of cases where the correct passage is in top 5 (RAG).  
+- **MRR@5**: Mean reciprocal rank of the first correct passage (RAG).  
+- **Throughput (QPS)**: Queries processed per second.  
