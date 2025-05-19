@@ -42,5 +42,3 @@ The repository is organized into four Jupyter notebooks—two for each API (Open
      - Token usage vs. Accuracy trade-off.
    - Visualizations created using Matplotlib for clear interpretation.
 
----
-*End of README overview.*  
